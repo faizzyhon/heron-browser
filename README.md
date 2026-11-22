@@ -33,6 +33,9 @@ Full walkthrough, Cloudflare deploy, API reference and troubleshooting: **[docs/
 | `research/` | Research synthesis and build plan |
 | `assets/` | Logo and banner |
 
+## License
+[MIT](LICENSE) © 2026 faizzyhon
+
 ## Scope and principles
 Heron declares itself and respects sites. It does **not** spoof fingerprints, imitate human input, or solve CAPTCHAs/Turnstile. When a site presents a challenge the page header reports `challenge_required` so a human or the customer's own approved flow can handle it. You are responsible for complying with the terms of the sites you automate.
 

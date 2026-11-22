@@ -10,3 +10,5 @@ tools/
 reel/node_modules/
 reel/out/
 reel/audio/work/
+reel/public/mix.wav
+reel/out/

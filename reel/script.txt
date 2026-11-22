@@ -1,0 +1,9 @@
+Your AI agent opens one web page. And burns your whole token budget.
+Raw HTML. Scripts. Menus. Ads. Thousands of tokens, just to find one button.
+Meet Heron. A browser built for AI agents.
+It reads the whole page as clean, compact text. A full Wikipedia article, about seven thousand tokens. Nothing cut off.
+Every button and link gets a short ID. Your agent clicks by ID. No guessing selectors.
+After each click, Heron sends only what changed. Not the whole page again.
+It runs on Firefox, not Chromium. Plugs into Claude with M C P. And sits behind a Cloudflare gateway, with keys, quotas and usage metering.
+It is honest by design. If a site shows a bot check, Heron tells you. It never bypasses it.
+Heron is free and open source, M I T licensed. Find it on GitHub. faizzyhon slash heron dash browser.
