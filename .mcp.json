@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "heron": {
+      "command": "node",
+      "args": ["mcp/src/index.mjs"],
+      "env": { "HERON_URL": "http://127.0.0.1:8787", "HERON_API_KEY": "dev-key" }
+    }
+  }
+}

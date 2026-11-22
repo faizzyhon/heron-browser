@@ -3,6 +3,7 @@
 Non-Chromium browser platform for AI agents: Firefox over WebDriver BiDi, an agent-native page snapshot (stable element IDs, challenge detection), and a metered multi-tenant API behind a Cloudflare gateway.
 
 - `heron/` origin server + browser driver (Node, zero deps)
+- `mcp/` MCP server (stdio + HTTP) and Claude connector, see docs/MCP.md
 - `worker/` Cloudflare Worker gateway (auth, tenants, proxy)
 - `docs/SETUP.md` setup guide
 - `research/` research synthesis and build plan

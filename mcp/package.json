@@ -1,0 +1,18 @@
+{
+  "name": "heron-mcp",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "heron-mcp": "src/index.mjs"
+  },
+  "scripts": {
+    "start": "node src/index.mjs",
+    "start:http": "node src/index.mjs --http",
+    "test": "node test/mcp.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  }
+}
