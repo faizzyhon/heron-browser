@@ -19,7 +19,7 @@ function findFirefox() {
 }
 
 export class Browser {
-  #ws; #proc; #profile; #nextId = 1; #pending = new Map(); #ctx;
+  #ws; #proc; #profile; #nextId = 1; #pending = new Map(); #ctx; #navStarts = 0; #loads = 0;
 
   static async launch({ width = 1280, height = 800, locale = 'en-US', timezone } = {}) {
     const b = new Browser();
@@ -46,12 +46,18 @@ export class Browser {
     await new Promise((res, rej) => { b.#ws.onopen = res; b.#ws.onerror = () => rej(new Error('BiDi connect failed')); });
     b.#ws.onmessage = (e) => {
       const m = JSON.parse(e.data);
+      if (m.type === 'event') {
+        if (m.method === 'browsingContext.navigationStarted') b.#navStarts++;
+        if (m.method === 'browsingContext.load') b.#loads++;
+        return;
+      }
       const p = b.#pending.get(m.id);
       if (!p) return;
       b.#pending.delete(m.id);
       m.type === 'error' ? p.reject(new Error(`${m.error}: ${m.message}`)) : p.resolve(m.result);
     };
     await b.#send('session.new', { capabilities: { alwaysMatch: { 'moz:firefoxOptions': { prefs: { 'intl.accept_languages': locale } } } } });
+    await b.#send('session.subscribe', { events: ['browsingContext.navigationStarted', 'browsingContext.load'] });
     b.#ctx = (await b.#send('browsingContext.getTree', {})).contexts[0].context;
     return b;
   }
@@ -78,10 +84,19 @@ export class Browser {
 
   snapshot() { return this.eval(SNAPSHOT_JS); }
 
+  // A click/Enter may start a navigation asynchronously: wait briefly for one to begin, then for its load event.
+  async settle(startWaitMs = 2000, maxMs = 20000) {
+    const before = this.#navStarts, loadsBefore = this.#loads;
+    const until = async (cond, ms) => { const end = Date.now() + ms; while (Date.now() < end && !cond()) await new Promise((r) => setTimeout(r, 50)); return cond(); };
+    if (!(await until(() => this.#navStarts > before, startWaitMs))) return; // no navigation triggered
+    await until(() => this.#loads > loadsBefore, maxMs);
+  }
+
   async click(id) {
     const r = await this.eval(elementRectJs(id));
     if (!r) throw new Error(`element ${id} not found/visible; take a new snapshot`);
     await this.#pointer(r.x, r.y);
+    await this.settle();
   }
 
   async type(id, text, { clear = true } = {}) {
@@ -93,6 +108,7 @@ export class Browser {
 
   async press(key) { // e.g. "\uE007" = Enter
     await this.#send('input.performActions', { context: this.#ctx, actions: [{ type: 'key', id: 'k', actions: [{ type: 'keyDown', value: key }, { type: 'keyUp', value: key }] }] });
+    await this.settle();
   }
 
   scroll(dy) { return this.eval(`(()=>{window.scrollBy(0,${Number(dy) | 0});return '"ok"'})()`); }
