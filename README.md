@@ -1,4 +1,12 @@
-# Heron
+<p align="center"><img src="assets/banner.svg" alt="Heron: the patient browser for AI agents" width="720"></p>
+
+<p align="center"><b>Non-Chromium · MCP-ready · Cloudflare-gated · honest by design</b></p>
+
+## Quickstart
+```
+cd heron && npm start          # origin API on :8787
+cd mcp && npm install          # then add to Claude Code via .mcp.json (see docs/MCP.md)
+```
 
 Non-Chromium browser platform for AI agents: Firefox over WebDriver BiDi, an agent-native page snapshot (stable element IDs, challenge detection), and a metered multi-tenant API behind a Cloudflare gateway.
 
