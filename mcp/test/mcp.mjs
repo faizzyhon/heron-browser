@@ -22,11 +22,14 @@ try {
   const tools = (await client.listTools()).tools.map((t) => t.name);
   assert.ok(['heron_navigate', 'heron_click', 'heron_type', 'heron_screenshot', 'heron_close'].every((n) => tools.includes(n)));
   const nav = await call('heron_navigate', { url: `http://127.0.0.1:${page.address().port}/` });
-  assert.match(txt(nav), /Title: MCP t/);
-  const input = txt(nav).match(/\[(e\d+)\] input/)[1];
-  const button = txt(nav).match(/\[(e\d+)\] button/)[1];
+  assert.match(txt(nav), /^# MCP t/);
+  const input = txt(nav).match(/⟨(e\d+) input/)[1];
+  const button = txt(nav).match(/⟨(e\d+) button/)[1];
   await call('heron_type', { id: input, text: 'bob' });
-  assert.match(txt(await call('heron_click', { id: button })), /Title: bob/);
+  const after = txt(await call('heron_click', { id: button }));
+  assert.match(after, /\| diff/); // same URL -> only changes are returned
+  assert.ok(after.length < txt(nav).length, 'diff is smaller than the full page');
+  assert.match(txt(await call('heron_read')), /page 1\/1/);
   const shot = await call('heron_screenshot');
   assert.equal(shot.content[0].type, 'image');
   assert.equal((await call('heron_click', { id: 'zzz' })).isError, true);

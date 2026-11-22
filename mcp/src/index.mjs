@@ -39,26 +39,21 @@ async function withSession(fn) {
 
 const KEYS = { enter: '', tab: '', escape: '', backspace: '', down: '', up: '' };
 
-const fmt = (s) => {
-  const lines = [`URL: ${s.url}`, `Title: ${s.title}`, `State: ${s.state}`];
-  if (s.state === 'challenge_required') {
-    lines.push('NOTE: the site is showing a bot/human verification challenge. Do not try to bypass it. Tell the user so they can complete it themselves or use an approved access method.');
-  }
-  lines.push('', 'Interactive elements (use the id in click/type):');
-  for (const e of s.elements) {
-    lines.push(`[${e.id}] ${e.tag}${e.type ? `:${e.type}` : ''}${e.role ? ` role=${e.role}` : ''} "${e.name}"${e.href ? ` -> ${e.href}` : ''}${e.value ? ` value="${e.value}"` : ''}${e.checked ? ' checked' : ''}`);
-  }
-  lines.push('', 'Page text:', s.text);
-  return lines.join('\n');
-};
-
 const text = (t) => ({ content: [{ type: 'text', text: t }] });
 const fail = (t) => ({ ...text(t), isError: true });
 
+async function read(params = {}) {
+  const q = new URLSearchParams(params);
+  const r = await withSession((id) => heron(`/sessions/${id}/read?${q}`));
+  const t = await r.text();
+  return r.ok ? text(t) : fail(`heron error ${r.status}: ${t}`);
+}
+
+// Actions return only what changed on the page (diff); a new URL returns the new page.
 async function act(action) {
   const r = await withSession((id) => heron(`/sessions/${id}/actions`, 'POST', action));
-  const j = await r.json();
-  return r.ok ? text(fmt(j.snapshot)) : fail(`heron error ${r.status}: ${j.error}`);
+  if (!r.ok) return fail(`heron error ${r.status}: ${(await r.json()).error}`);
+  return read({ diff: '1' });
 }
 
 export function buildServer() {
@@ -68,20 +63,20 @@ export function buildServer() {
       try { return await handler(args); } catch (e) { return fail(String(e.message || e)); }
     });
 
-  tool('heron_navigate', 'Open an http(s) URL in a real Firefox browser session and return the page snapshot (elements with ids + text). Respects per-host rate limits.',
-    { url: z.string().url() }, ({ url }) => act({ type: 'navigate', url }));
-
-  tool('heron_snapshot', 'Return the current page snapshot: interactive elements with stable ids and visible text.',
-    {}, async () => {
-      const r = await withSession((id) => heron(`/sessions/${id}/snapshot`));
-      const j = await r.json();
-      return r.ok ? text(fmt(j)) : fail(`heron error ${r.status}: ${j.error}`);
+  tool('heron_navigate', 'Open an http(s) URL in a real Firefox browser session and return page 1 of the page text (see heron_read for more pages). Respects per-host rate limits.',
+    { url: z.string().url() }, async ({ url }) => {
+      const r = await withSession((id) => heron(`/sessions/${id}/actions`, 'POST', { type: 'navigate', url }));
+      return r.ok ? read() : fail(`heron error ${r.status}: ${(await r.json()).error}`);
     });
 
-  tool('heron_click', 'Click an element by its snapshot id. Returns the new snapshot.',
+  tool('heron_read', 'Read the COMPLETE current page as compact text (headings, paragraphs, lists, tables; interactive elements inline as ⟨id kind "label"⟩, usable with click/type). Paged by token budget: pass page=2,3.. when the header says page 1/N. mode=main (default) drops nav/footer/sidebars; mode=full keeps everything. links=true adds link targets.',
+    { page: z.number().int().min(1).default(1), max_tokens: z.number().int().min(500).max(20000).default(4000), mode: z.enum(['main', 'full']).default('main'), links: z.boolean().default(false) },
+    ({ page, max_tokens, mode, links }) => read({ page, max_tokens, mode, links: links ? '1' : '0' }));
+
+  tool('heron_click', 'Click an element by its id. Returns only what changed on the page, or the new page if the URL changed.',
     { id: z.string() }, ({ id }) => act({ type: 'click', id }));
 
-  tool('heron_type', 'Type text into an input by snapshot id (replaces existing text). Set submit=true to press Enter afterwards.',
+  tool('heron_type', 'Type text into an input by id (replaces existing text). Set submit=true to press Enter afterwards.',
     { id: z.string(), text: z.string(), submit: z.boolean().optional() },
     async ({ id, text: t, submit }) => {
       const r = await act({ type: 'type', id, text: t });

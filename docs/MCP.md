@@ -1,6 +1,8 @@
 # Heron MCP server and Claude connector
 
-`mcp/` wraps the Heron API as MCP tools: `heron_navigate`, `heron_snapshot`, `heron_click`, `heron_type`, `heron_press`, `heron_scroll`, `heron_screenshot`, `heron_close`. A session opens automatically on first use and reopens if its lease expired. If a page shows a bot challenge, the tool output tells the model not to bypass it and to ask the user.
+`mcp/` wraps the Heron API as MCP tools: `heron_navigate`, `heron_read`, `heron_click`, `heron_type`, `heron_press`, `heron_scroll`, `heron_screenshot`, `heron_close`. **Whole page, few tokens.** `heron_read` returns the complete page as compact text (headings, lists, tables, inline `⟨id kind "label"⟩` for clickable things), paged by a token budget (`max_tokens`, default 4000, `page=N`). Boilerplate (nav/footer/sidebars, icon-only links, citation links, ads/scripts/hidden nodes) is dropped; `mode=full` keeps it; `links=true` adds link targets. After click/type/press/scroll, tools return **only what changed** (`+`/`-` lines) when the URL is the same. Measured on a Wikipedia article: ~7k tokens for the whole page vs. the old JSON snapshot's 37k characters that still cut the article off.
+
+A session opens automatically on first use and reopens if its lease expired. If a page shows a bot challenge, the tool output tells the model not to bypass it and to ask the user.
 
 Install once: `cd mcp && npm install`. Start the Heron origin first (`cd heron && npm start`).
 

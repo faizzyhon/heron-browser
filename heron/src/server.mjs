@@ -99,6 +99,13 @@ const server = http.createServer(async (req, res) => {
         meter(key, 'action', { session: parts[1], action: a.type });
         return json(res, 200, { ok: true, snapshot: await s.browser.snapshot() }); // result includes new page state
       }
+      if (req.method === 'GET' && sub === 'read') { // whole page as compact text; ?mode=main|full&page=&max_tokens=&links=1&diff=1
+        const q = url.searchParams;
+        const text = await s.browser.read({ mode: q.get('mode') === 'full' ? 'full' : 'main', page: Number(q.get('page')) || 1, maxTokens: Math.min(Number(q.get('max_tokens')) || 4000, 20000), links: q.get('links') === '1', diff: q.get('diff') === '1' });
+        meter(key, 'read', { session: parts[1] });
+        res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
+        return res.end(text);
+      }
       if (req.method === 'GET' && sub === 'snapshot') return json(res, 200, await s.browser.snapshot());
       if (req.method === 'GET' && sub === 'screenshot') {
         meter(key, 'screenshot', { session: parts[1] });

@@ -3,7 +3,7 @@ import { spawn, execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { SNAPSHOT_JS, elementRectJs } from './snapshot.mjs';
+import { SNAPSHOT_JS, elementRectJs, readJs } from './snapshot.mjs';
 
 const FIREFOX_PATHS = [
   process.env.HERON_FIREFOX,
@@ -19,7 +19,7 @@ function findFirefox() {
 }
 
 export class Browser {
-  #ws; #proc; #profile; #nextId = 1; #pending = new Map(); #ctx; #navStarts = 0; #loads = 0;
+  #ws; #proc; #profile; #nextId = 1; #pending = new Map(); #ctx; #navStarts = 0; #loads = 0; #prev = null;
 
   static async launch({ width = 1280, height = 800, locale = 'en-US', timezone } = {}) {
     const b = new Browser();
@@ -83,6 +83,29 @@ export class Browser {
   }
 
   snapshot() { return this.eval(SNAPSHOT_JS); }
+
+  // Whole page as compact text, paged by token budget. diff=true returns only changes vs the previous read of the same URL.
+  async read({ mode = 'main', page = 1, maxTokens = 4000, links = false, diff = false } = {}) {
+    const d = await this.eval(readJs({ mode, links }));
+    const lines = d.lines.filter((l, i) => l !== d.lines[i - 1] && /[\p{L}\p{N}]/u.test(l)); // drop dupes + punctuation-only
+    const prev = this.#prev; this.#prev = { url: d.url, lines };
+    const head = `# ${d.title}\n${d.url} | ${d.state}`;
+    const note = d.state === 'challenge_required' ? '\nNOTE: site shows a verification challenge. Do not bypass; ask the user.' : '';
+    if (diff && prev && prev.url === d.url) {
+      const old = new Set(prev.lines), now = new Set(lines);
+      const add = lines.filter((l) => !old.has(l)), del = prev.lines.filter((l) => !now.has(l));
+      const body = !add.length && !del.length ? '(no change)' : [...add.slice(0, 60).map((l) => '+ ' + l), ...del.slice(0, 20).map((l) => '- ' + l.slice(0, 80))].join('\n');
+      return `${head} | diff${note}\n${body}`;
+    }
+    const budget = maxTokens * 3.5, pages = [[]]; let used = 0;
+    for (const l of lines) {
+      if (used + l.length > budget && pages.at(-1).length) { pages.push([]); used = 0; }
+      pages.at(-1).push(l); used += l.length + 1;
+    }
+    const p = Math.min(Math.max(1, page), pages.length);
+    const body = pages[p - 1].join('\n');
+    return `${head} | page ${p}/${pages.length} | ~${Math.ceil(body.length / 3.5)} tok${note}\n${body}`;
+  }
 
   // A click/Enter may start a navigation asynchronously: wait briefly for one to begin, then for its load event.
   async settle(startWaitMs = 2000, maxMs = 20000) {
