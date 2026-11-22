@@ -6,3 +6,7 @@ node_modules/
 data/
 *.log
 .DS_Store
+tools/
+reel/node_modules/
+reel/out/
+reel/audio/work/
