@@ -1,0 +1,14 @@
+name = "heron-gateway"
+main = "src/index.mjs"
+compatibility_date = "2026-11-01"
+
+# Public (non-secret) origin URL: your Cloudflare Tunnel hostname. Change after creating the tunnel.
+[vars]
+ORIGIN_URL = "https://REPLACE-ME.trycloudflare.com"
+
+# Create with: npx wrangler kv namespace create KEYS   -> paste the id below
+[[kv_namespaces]]
+binding = "KEYS"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# Secret (never in this file): npx wrangler secret put ORIGIN_SECRET
